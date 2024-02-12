@@ -32,6 +32,6 @@ foreach ($sub in $subscriptions) {
 
 ###If you only need to check one Subscription, use one of the following two scripts (This can be done in CloudShell##
 ##By Subscription Name
-# Get-AzSubscription -SubscriptionName [Insert Subscription Name] | Select-AzSubscription | Get-AzPublicIpAddress | Where-Object { $_.Sku.Text -eq "Basic" } | ForEach-Object { Write-Output $_.Id }
+# Get-AzSubscription -SubscriptionName [Insert Subscription Name] | Select-AzSubscription | Get-AzPublicIpAddress | Where-Object { $_.Sku.Name -eq "Basic" } | ForEach-Object { Write-Output $_.Id }
 ##By Subscription ID
-# Get-AzSubscription -SubscriptionId [Insert Subscription Id] | Select-AzSubscription | Get-AzPublicIpAddress | Where-Object { $_.Sku.Text -eq "Basic" } | ForEach-Object { Write-Output $_.Id }
+# Get-AzSubscription -SubscriptionId [Insert Subscription Id] | Select-AzSubscription | Get-AzPublicIpAddress | Where-Object { $_.Sku.Name -eq "Basic" } | ForEach-Object { Write-Output $_.Id }
