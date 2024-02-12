@@ -1,3 +1,4 @@
+###Outputs a report of all Public IP addresses in all subscriptions to their own files at C:/temp###
 # Get all subscriptions
 $subscriptions = Get-AzSubscription
 
@@ -28,3 +29,9 @@ foreach ($sub in $subscriptions) {
         $exportData | Export-Csv -Path $csvFileName -NoTypeInformation
     }
 }
+
+###If you only need to check one Subscription, use one of the following two scripts (This can be done in CloudShell##
+##By Subscription Name
+# Get-AzSubscription -SubscriptionName [Insert Subscription Name] | Select-AzSubscription | Get-AzPublicIpAddress | Where-Object { $_.Sku.Text -eq "Basic" } | ForEach-Object { Write-Output $_.Id }
+##By Subscription ID
+# Get-AzSubscription -SubscriptionId [Insert Subscription Id] | Select-AzSubscription | Get-AzPublicIpAddress | Where-Object { $_.Sku.Text -eq "Basic" } | ForEach-Object { Write-Output $_.Id }
