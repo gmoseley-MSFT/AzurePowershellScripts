@@ -1,0 +1,30 @@
+# Input subscription name and location
+$subscriptionName = "Input the subscription name"
+$location = "centralus" # Default location
+$vnetCount = "Input Spoke Virtual Network count"
+$date = Get-Date -Format "MMddyy"
+$randomNumbers = Get-Random -Minimum 10000 -Maximum 99999
+$randomLogic = $date + $randomNumbers
+
+# Select the subscription
+$subscription = Get-AzSubscription -SubscriptionName $subscriptionName
+Select-AzSubscription -SubscriptionId $subscription.Id
+
+# Create Resource Group
+$rgName = "rg-$randomLogic"
+New-AzResourceGroup -Name $rgName -Location $location
+
+# Create HUB VNET
+$hubVnetName = "vnet-hub-$randomLogic"
+$hubVnet = New-AzVirtualNetwork -Name $hubVnetName -ResourceGroupName $rgName -Location $location -AddressPrefix "10.120.0.0/24"
+
+# Initialize VNET creation
+$SpokeVnets = @()
+$startAddress = 1
+for ($i=1; $i -le $vnetCount; $i++) {
+    $vnetName = "vnet-$randomLogic-" + $i.ToString("0000")
+    $addressSpace = "10.120.$startAddress.0/24"
+    $vnet = New-AzVirtualNetwork -Name $vnetName -ResourceGroupName $rgName -Location $location -AddressPrefix $addressSpace
+    $SpokeVnets += $vnet
+    $startAddress++
+}
