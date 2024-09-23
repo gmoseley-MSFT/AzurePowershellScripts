@@ -17,15 +17,6 @@ $subnetBName = "SubnetB"
 $subnetAPrefix = "10.0.0.0/24"
 $subnetBPrefix = "10.1.0.0/24"
 
-# Define VM details
-$vmSize = "Standard_DS1_v2"
-$username = "AzAdmin"
-$password = ConvertTo-SecureString 'UVJxSJ9uwZSzSJ9u9u' -AsPlainText -Force
-$vmAName = "VM-A"
-$vmBName = "VM-B"
-$nicAName = "NIC-VM-A"
-$nicBName = "NIC-VM-B"
-
 # Select the Azure subscription
 Select-AzSubscription -SubscriptionId $subid
 
@@ -33,28 +24,47 @@ Select-AzSubscription -SubscriptionId $subid
 Write-Output "Creating Resource Group: $rg in $location"
 New-AzResourceGroup -Name $rg -Location $location
 
-# Create VNet A and Subnet A
+# Create VNet A and Subnet A in the background
 Write-Output "Creating VNet A: $vnetAName"
-$vnetA = New-AzVirtualNetwork -ResourceGroupName $rg -Location $location -Name $vnetAName -AddressPrefix $vnetAAddressPrefix
-$subnetA = Add-AzVirtualNetworkSubnetConfig -Name $subnetAName -AddressPrefix $subnetAPrefix -VirtualNetwork $vnetA
-$vnetA | Set-AzVirtualNetwork
+Start-Job -ScriptBlock {
+    param($rg, $location, $vnetAName, $vnetAAddressPrefix, $subnetAName, $subnetAPrefix)
+    $vnetA = New-AzVirtualNetwork -ResourceGroupName $rg -Location $location -Name $vnetAName -AddressPrefix $vnetAAddressPrefix
+    Add-AzVirtualNetworkSubnetConfig -Name $subnetAName -AddressPrefix $subnetAPrefix -VirtualNetwork $vnetA
+    $vnetA | Set-AzVirtualNetwork
+} -ArgumentList $rg, $location, $vnetAName, $vnetAAddressPrefix, $subnetAName, $subnetAPrefix
 
-# Create VNet B and Subnet B
+# Create VNet B and Subnet B in the background
 Write-Output "Creating VNet B: $vnetBName"
-$vnetB = New-AzVirtualNetwork -ResourceGroupName $rg -Location $location -Name $vnetBName -AddressPrefix $vnetBAddressPrefix
-$subnetB = Add-AzVirtualNetworkSubnetConfig -Name $subnetBName -AddressPrefix $subnetBPrefix -VirtualNetwork $vnetB
-$vnetB | Set-AzVirtualNetwork
+Start-Job -ScriptBlock {
+    param($rg, $location, $vnetBName, $vnetBAddressPrefix, $subnetBName, $subnetBPrefix)
+    $vnetB = New-AzVirtualNetwork -ResourceGroupName $rg -Location $location -Name $vnetBName -AddressPrefix $vnetBAddressPrefix
+    Add-AzVirtualNetworkSubnetConfig -Name $subnetBName -AddressPrefix $subnetBPrefix -VirtualNetwork $vnetB
+    $vnetB | Set-AzVirtualNetwork
+} -ArgumentList $rg, $location, $vnetBName, $vnetBAddressPrefix, $subnetBName, $subnetBPrefix
+
+# Wait for both VNets to be created
+Get-Job | Wait-Job | Out-Null
 
 # Retrieve updated VNet objects (to ensure Subnets are reflected)
 $vnetA = Get-AzVirtualNetwork -ResourceGroupName $rg -Name $vnetAName
 $vnetB = Get-AzVirtualNetwork -ResourceGroupName $rg -Name $vnetBName
 
+# List URIs of created resources
+$vnetAURI = $vnetA.Id
+$vnetBURI = $vnetB.Id
+Write-Output "The following resource URIs were created:"
+Write-Output "VNet A URI: $vnetAURI"
+Write-Output "VNet B URI: $vnetBURI"
+
 # Peer VNet A to VNet B
 Write-Output "Peering VNet A to VNet B"
-Add-AzVirtualNetworkPeering -Name "VNetAtoVNetB" -ResourceGroupName $rg -VirtualNetworkName $vnetAName `
-    -RemoteVirtualNetworkId $vnetB.Id -AllowForwardedTraffic -AllowGatewayTransit -AllowVirtualNetworkAccess
+Add-AzVirtualNetworkPeering -Name "VNetAtoVNetB" -VirtualNetwork $vnetA `
+    -RemoteVirtualNetworkId $vnetB.Id -AllowForwardedTraffic
 
 # Peer VNet B to VNet A
 Write-Output "Peering VNet B to VNet A"
-Add-AzVirtualNetworkPeering -Name "VNetBtoVNetA" -ResourceGroupName $rg -VirtualNetworkName $vnetBName `
-    -RemoteVirtualNetworkId $vnetA.Id -AllowForwardedTraffic -AllowGatewayTransit -AllowVirtualNetworkAccess
+Add-AzVirtualNetworkPeering -Name "VNetBtoVNetA" -VirtualNetwork $vnetB `
+    -RemoteVirtualNetworkId $vnetA.Id -AllowForwardedTraffic
+
+## Script to remove the lab when you're done
+## Get-AzResourceGroup -Name $rg | Remove-AzResourceGroup -Name $rg -Force
