@@ -67,4 +67,4 @@ Add-AzVirtualNetworkPeering -Name "VNetBtoVNetA" -VirtualNetwork $vnetB `
     -RemoteVirtualNetworkId $vnetA.Id -AllowForwardedTraffic
 
 ## Script to remove the lab when you're done
-## Get-AzResourceGroup -Name $rg | Remove-AzResourceGroup -Name $rg -Force
+## Remove-AzResourceGroup -Name $rg -Force
