@@ -1,0 +1,60 @@
+# Set the subscription ID
+$subid = "REDACT"
+
+# Generate a unique Resource Group name using a GUID
+$rg = [guid]::NewGuid().ToString()
+
+# Define the location
+$location = "NorthCentralUS"
+
+# Define VNet and Subnet details
+$vnetAName = "VNetA"
+$vnetBName = "VNetB"
+$vnetAAddressPrefix = "10.0.0.0/16"
+$vnetBAddressPrefix = "10.1.0.0/16"
+$subnetAName = "SubnetA"
+$subnetBName = "SubnetB"
+$subnetAPrefix = "10.0.0.0/24"
+$subnetBPrefix = "10.1.0.0/24"
+
+# Define VM details
+$vmSize = "Standard_DS1_v2"
+$username = "AzAdmin"
+$password = ConvertTo-SecureString 'UVJxSJ9uwZSzSJ9u9u' -AsPlainText -Force
+$vmAName = "VM-A"
+$vmBName = "VM-B"
+$nicAName = "NIC-VM-A"
+$nicBName = "NIC-VM-B"
+
+# Select the Azure subscription
+Select-AzSubscription -SubscriptionId $subid
+
+# Create Resource Group
+Write-Output "Creating Resource Group: $rg in $location"
+New-AzResourceGroup -Name $rg -Location $location
+
+# Create VNet A and Subnet A
+Write-Output "Creating VNet A: $vnetAName"
+$vnetA = New-AzVirtualNetwork -ResourceGroupName $rg -Location $location -Name $vnetAName -AddressPrefix $vnetAAddressPrefix
+$subnetA = Add-AzVirtualNetworkSubnetConfig -Name $subnetAName -AddressPrefix $subnetAPrefix -VirtualNetwork $vnetA
+$vnetA | Set-AzVirtualNetwork
+
+# Create VNet B and Subnet B
+Write-Output "Creating VNet B: $vnetBName"
+$vnetB = New-AzVirtualNetwork -ResourceGroupName $rg -Location $location -Name $vnetBName -AddressPrefix $vnetBAddressPrefix
+$subnetB = Add-AzVirtualNetworkSubnetConfig -Name $subnetBName -AddressPrefix $subnetBPrefix -VirtualNetwork $vnetB
+$vnetB | Set-AzVirtualNetwork
+
+# Retrieve updated VNet objects (to ensure Subnets are reflected)
+$vnetA = Get-AzVirtualNetwork -ResourceGroupName $rg -Name $vnetAName
+$vnetB = Get-AzVirtualNetwork -ResourceGroupName $rg -Name $vnetBName
+
+# Peer VNet A to VNet B
+Write-Output "Peering VNet A to VNet B"
+Add-AzVirtualNetworkPeering -Name "VNetAtoVNetB" -ResourceGroupName $rg -VirtualNetworkName $vnetAName `
+    -RemoteVirtualNetworkId $vnetB.Id -AllowForwardedTraffic -AllowGatewayTransit -AllowVirtualNetworkAccess
+
+# Peer VNet B to VNet A
+Write-Output "Peering VNet B to VNet A"
+Add-AzVirtualNetworkPeering -Name "VNetBtoVNetA" -ResourceGroupName $rg -VirtualNetworkName $vnetBName `
+    -RemoteVirtualNetworkId $vnetA.Id -AllowForwardedTraffic -AllowGatewayTransit -AllowVirtualNetworkAccess
